@@ -14,7 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      student_enrollments: {
+        Row: {
+          class_type: string
+          country: string
+          date_of_birth: string
+          email: string
+          full_name: string
+          gender: string
+          guardian_name: string
+          id: string
+          interest_areas: string[]
+          level: string
+          native_language: string
+          preferred_days: string[]
+          preferred_time: string
+          previous_madrasah: string | null
+          questions: string | null
+          quran_reading_ability: string
+          referral_source: string | null
+          relationship: string
+          special_needs: string | null
+          submitted_at: string
+          tajweed_knowledge: string
+          timezone: string
+          whatsapp_number: string
+        }
+        Insert: {
+          class_type: string
+          country: string
+          date_of_birth: string
+          email: string
+          full_name: string
+          gender: string
+          guardian_name: string
+          id?: string
+          interest_areas?: string[]
+          level: string
+          native_language: string
+          preferred_days?: string[]
+          preferred_time: string
+          previous_madrasah?: string | null
+          questions?: string | null
+          quran_reading_ability: string
+          referral_source?: string | null
+          relationship: string
+          special_needs?: string | null
+          submitted_at?: string
+          tajweed_knowledge: string
+          timezone: string
+          whatsapp_number: string
+        }
+        Update: {
+          class_type?: string
+          country?: string
+          date_of_birth?: string
+          email?: string
+          full_name?: string
+          gender?: string
+          guardian_name?: string
+          id?: string
+          interest_areas?: string[]
+          level?: string
+          native_language?: string
+          preferred_days?: string[]
+          preferred_time?: string
+          previous_madrasah?: string | null
+          questions?: string | null
+          quran_reading_ability?: string
+          referral_source?: string | null
+          relationship?: string
+          special_needs?: string | null
+          submitted_at?: string
+          tajweed_knowledge?: string
+          timezone?: string
+          whatsapp_number?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
