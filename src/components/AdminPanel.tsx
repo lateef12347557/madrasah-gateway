@@ -17,12 +17,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [error, setError] = useState('');
   const [students, setStudents] = useState<StudentData[]>([]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (verifyAdminPassword(password)) {
       setIsAuthenticated(true);
-      setStudents(getStudents());
+      try {
+        const data = await getStudents();
+        setStudents(data);
+      } catch (err) {
+        console.error('Failed to fetch students:', err);
+        toast({
+          title: "Error",
+          description: "Failed to load student data.",
+          variant: "destructive",
+        });
+      }
       setError('');
       toast({
         title: "Access Granted",
@@ -110,8 +120,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 </div>
                 <div>
                   <h2 className="text-2xl font-serif font-bold">Registered Students</h2>
-                  <p className="text-primary-foreground/80">
-                    {students.length} application{students.length !== 1 ? 's' : ''} this session
+                <p className="text-primary-foreground/80">
+                    {students.length} application{students.length !== 1 ? 's' : ''} total
                   </p>
                 </div>
               </div>
@@ -179,14 +189,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 </div>
               )}
 
-              {/* Session Warning */}
-              <div className="mt-6 p-4 bg-secondary/50 rounded-lg border border-border flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-secondary-foreground flex-shrink-0 mt-0.5" />
+              {/* Persistent Storage Info */}
+              <div className="mt-6 p-4 bg-primary/10 rounded-lg border border-primary/20 flex items-start gap-3">
+                <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
-                  <p className="font-medium text-foreground">Session-Based Storage</p>
+                  <p className="font-medium text-foreground">Persistent Database Storage</p>
                   <p className="text-muted-foreground">
-                    This data is stored in memory for this session only. Refreshing or closing the browser 
-                    will clear all data. For production use, consider integrating a database solution.
+                    All student enrollments are securely stored in the database. 
+                    Data persists across browser sessions and page refreshes.
                   </p>
                 </div>
               </div>

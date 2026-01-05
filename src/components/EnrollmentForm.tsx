@@ -188,13 +188,19 @@ const EnrollmentForm: React.FC<EnrollmentFormProps> = ({ onSubmitSuccess }) => {
 
     setIsSubmitting(true);
     
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    addStudent(formData as Omit<StudentData, 'id' | 'submittedAt'>);
-    
-    setIsSubmitting(false);
-    onSubmitSuccess();
+    try {
+      await addStudent(formData as Omit<StudentData, 'id' | 'submittedAt'>);
+      onSubmitSuccess();
+    } catch (error) {
+      console.error('Failed to submit enrollment:', error);
+      toast({
+        title: "Submission Failed",
+        description: "There was an error submitting your application. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
