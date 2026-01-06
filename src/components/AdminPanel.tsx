@@ -4,9 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getStudents, verifyAdminPassword, StudentData } from '@/lib/studentStore';
-import { Shield, Lock, AlertTriangle, Users, X } from 'lucide-react';
+import { exportStudentApplication, exportEnrollmentReport } from '@/lib/pdfExport';
+import { Shield, Lock, AlertTriangle, Users, X, FileDown, FileText } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-
 interface AdminPanelProps {
   onClose: () => void;
 }
@@ -125,13 +125,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   </p>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
-                onClick={onClose}
-                className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20"
-              >
-                Close Panel
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => exportEnrollmentReport(students)}
+                  disabled={students.length === 0}
+                  className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20"
+                >
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Export Report
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={onClose}
+                  className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20"
+                >
+                  Close Panel
+                </Button>
+              </div>
             </div>
 
             {/* Content */}
@@ -160,6 +171,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                         <TableHead>Level</TableHead>
                         <TableHead>Interests</TableHead>
                         <TableHead>Class Type</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -181,6 +193,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                           </TableCell>
                           <TableCell className="capitalize">
                             {student.classType.replace(/_/g, ' ')}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => exportStudentApplication(student)}
+                              title="Download PDF"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
