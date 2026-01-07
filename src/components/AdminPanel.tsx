@@ -1,13 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getStudents, verifyAdminPassword, StudentData } from '@/lib/studentStore';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getStudents, verifyAdminPassword, StudentData, getAdmins, addAdmin, deleteAdmin, AdminUser } from '@/lib/studentStore';
 import { exportStudentApplication, exportEnrollmentReport } from '@/lib/pdfExport';
 import StudentDetailCard from '@/components/StudentDetailCard';
-import { Shield, Lock, AlertTriangle, Users, X, FileDown, FileText, Search, Eye } from 'lucide-react';
+import { Shield, Lock, AlertTriangle, Users, X, FileDown, FileText, Search, Eye, UserPlus, Trash2, Settings } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface AdminPanelProps {
@@ -16,18 +17,43 @@ interface AdminPanelProps {
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(null);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [students, setStudents] = useState<StudentData[]>([]);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(null);
+  const [activeTab, setActiveTab] = useState('students');
+  
+  // New admin form
+  const [newAdminUsername, setNewAdminUsername] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [isAddingAdmin, setIsAddingAdmin] = useState(false);
+
+  const loadAdmins = async () => {
+    try {
+      const data = await getAdmins();
+      setAdmins(data);
+    } catch (err) {
+      console.error('Failed to fetch admins:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadAdmins();
+    }
+  }, [isAuthenticated]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (verifyAdminPassword(password)) {
+    const result = await verifyAdminPassword(password);
+    if (result.success && result.admin) {
       setIsAuthenticated(true);
+      setCurrentAdmin(result.admin);
       try {
         const data = await getStudents();
         setStudents(data);
@@ -42,13 +68,80 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       setError('');
       toast({
         title: "Access Granted",
-        description: "Welcome to the admin panel.",
+        description: `Welcome, ${result.admin.username}!`,
       });
     } else {
       setError('Invalid password. Access denied.');
       toast({
         title: "Access Denied",
         description: "Incorrect password.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminUsername.trim() || !newAdminPassword.trim()) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAddingAdmin(true);
+    try {
+      await addAdmin(newAdminUsername.trim(), newAdminPassword);
+      toast({
+        title: "Success",
+        description: "New admin added successfully.",
+      });
+      setNewAdminUsername('');
+      setNewAdminPassword('');
+      loadAdmins();
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message?.includes('duplicate') ? "Username already exists." : "Failed to add admin.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingAdmin(false);
+    }
+  };
+
+  const handleDeleteAdmin = async (admin: AdminUser) => {
+    if (admins.length <= 1) {
+      toast({
+        title: "Error",
+        description: "Cannot delete the last admin.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (admin.id === currentAdmin?.id) {
+      toast({
+        title: "Error",
+        description: "Cannot delete yourself.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await deleteAdmin(admin.id);
+      toast({
+        title: "Success",
+        description: "Admin deleted successfully.",
+      });
+      loadAdmins();
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to delete admin.",
         variant: "destructive",
       });
     }
@@ -165,25 +258,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               <div className="bg-gradient-hero text-primary-foreground p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-primary-foreground/10 flex items-center justify-center">
-                    <Users className="w-6 h-6" />
+                    <Shield className="w-6 h-6" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-serif font-bold">Registered Students</h2>
+                    <h2 className="text-2xl font-serif font-bold">Admin Dashboard</h2>
                     <p className="text-primary-foreground/80">
-                      {filteredStudents.length} of {students.length} application{students.length !== 1 ? 's' : ''}
+                      Logged in as {currentAdmin?.username}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => exportEnrollmentReport(filteredStudents)}
-                    disabled={filteredStudents.length === 0}
-                    className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20"
-                  >
-                    <FileDown className="w-4 h-4 mr-2" />
-                    Export Report
-                  </Button>
                   <Button 
                     variant="outline" 
                     onClick={onClose}
@@ -193,6 +277,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   </Button>
                 </div>
               </div>
+
+              {/* Tabs */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <div className="border-b border-border px-6 pt-4">
+                  <TabsList className="grid w-full max-w-md grid-cols-2">
+                    <TabsTrigger value="students" className="flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Students ({students.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="admins" className="flex items-center gap-2">
+                      <Settings className="w-4 h-4" />
+                      Admins ({admins.length})
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                {/* Students Tab */}
+                <TabsContent value="students" className="mt-0">
 
               {/* Search and Filters */}
               <div className="p-4 border-b border-border bg-muted/30">
@@ -316,18 +418,109 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   </div>
                 )}
 
-                {/* Persistent Storage Info */}
-                <div className="mt-6 p-4 bg-primary/10 rounded-lg border border-primary/20 flex items-start gap-3">
-                  <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-foreground">Persistent Database Storage</p>
-                    <p className="text-muted-foreground">
-                      All student enrollments are securely stored in the database. 
-                      Data persists across browser sessions and page refreshes.
-                    </p>
+                  {/* Export Button */}
+                  <div className="flex justify-end">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => exportEnrollmentReport(filteredStudents)}
+                      disabled={filteredStudents.length === 0}
+                    >
+                      <FileDown className="w-4 h-4 mr-2" />
+                      Export Report
+                    </Button>
                   </div>
                 </div>
-              </div>
+                </TabsContent>
+
+                {/* Admins Tab */}
+                <TabsContent value="admins" className="mt-0">
+                  <div className="p-6 space-y-6">
+                    {/* Add New Admin Form */}
+                    <div className="bg-muted/30 rounded-lg p-4 border border-border">
+                      <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
+                        <UserPlus className="w-4 h-4" />
+                        Add New Admin
+                      </h3>
+                      <form onSubmit={handleAddAdmin} className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1">
+                          <Label htmlFor="newUsername" className="sr-only">Username</Label>
+                          <Input
+                            id="newUsername"
+                            placeholder="Username"
+                            value={newAdminUsername}
+                            onChange={(e) => setNewAdminUsername(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <Label htmlFor="newPassword" className="sr-only">Password</Label>
+                          <Input
+                            id="newPassword"
+                            type="password"
+                            placeholder="Password"
+                            value={newAdminPassword}
+                            onChange={(e) => setNewAdminPassword(e.target.value)}
+                          />
+                        </div>
+                        <Button type="submit" disabled={isAddingAdmin}>
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Add Admin
+                        </Button>
+                      </form>
+                    </div>
+
+                    {/* Admins List */}
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Username</TableHead>
+                            <TableHead>Created At</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {admins.map((admin) => (
+                            <TableRow key={admin.id}>
+                              <TableCell className="font-medium">
+                                {admin.username}
+                                {admin.id === currentAdmin?.id && (
+                                  <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">You</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {admin.createdAt.toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteAdmin(admin)}
+                                  disabled={admin.id === currentAdmin?.id || admins.length <= 1}
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  title={admin.id === currentAdmin?.id ? "Cannot delete yourself" : "Delete admin"}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Info */}
+                    <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 flex items-start gap-3">
+                      <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-medium text-foreground">Admin Security</p>
+                        <p className="text-muted-foreground">
+                          Each admin has a unique password. You cannot delete the last admin or yourself.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </div>
