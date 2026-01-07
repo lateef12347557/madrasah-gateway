@@ -5,10 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getStudents, verifyAdminPassword, StudentData, getAdmins, addAdmin, deleteAdmin, AdminUser } from '@/lib/studentStore';
+import { getStudents, verifyAdminPassword, StudentData, getAdmins, addAdmin, deleteAdmin, updateAdminPassword, AdminUser } from '@/lib/studentStore';
 import { exportStudentApplication, exportEnrollmentReport } from '@/lib/pdfExport';
 import StudentDetailCard from '@/components/StudentDetailCard';
-import { Shield, Lock, AlertTriangle, Users, X, FileDown, FileText, Search, Eye, UserPlus, Trash2, Settings } from 'lucide-react';
+import { Shield, Lock, AlertTriangle, Users, X, FileDown, FileText, Search, Eye, UserPlus, Trash2, Settings, Key } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface AdminPanelProps {
@@ -31,6 +31,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [newAdminUsername, setNewAdminUsername] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
+  
+  // Password change form
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPasswordValue, setNewPasswordValue] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const loadAdmins = async () => {
     try {
@@ -144,6 +150,68 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         description: "Failed to delete admin.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!currentPassword || !newPasswordValue || !confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Please fill in all password fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPasswordValue !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "New passwords do not match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPasswordValue.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      // Verify current password
+      const result = await verifyAdminPassword(currentPassword);
+      if (!result.success || result.admin?.id !== currentAdmin?.id) {
+        toast({
+          title: "Error",
+          description: "Current password is incorrect.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await updateAdminPassword(currentAdmin!.id, newPasswordValue);
+      toast({
+        title: "Success",
+        description: "Password changed successfully.",
+      });
+      setCurrentPassword('');
+      setNewPasswordValue('');
+      setConfirmPassword('');
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to change password.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -435,6 +503,52 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 {/* Admins Tab */}
                 <TabsContent value="admins" className="mt-0">
                   <div className="p-6 space-y-6">
+                    {/* Change Your Password */}
+                    <div className="bg-muted/30 rounded-lg p-4 border border-border">
+                      <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
+                        <Key className="w-4 h-4" />
+                        Change Your Password
+                      </h3>
+                      <form onSubmit={handleChangePassword} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <Label htmlFor="currentPassword" className="text-sm text-muted-foreground mb-1 block">Current Password</Label>
+                            <Input
+                              id="currentPassword"
+                              type="password"
+                              placeholder="Enter current password"
+                              value={currentPassword}
+                              onChange={(e) => setCurrentPassword(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="newPasswordValue" className="text-sm text-muted-foreground mb-1 block">New Password</Label>
+                            <Input
+                              id="newPasswordValue"
+                              type="password"
+                              placeholder="Enter new password"
+                              value={newPasswordValue}
+                              onChange={(e) => setNewPasswordValue(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="confirmPassword" className="text-sm text-muted-foreground mb-1 block">Confirm Password</Label>
+                            <Input
+                              id="confirmPassword"
+                              type="password"
+                              placeholder="Confirm new password"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <Button type="submit" disabled={isChangingPassword}>
+                          <Key className="w-4 h-4 mr-2" />
+                          Change Password
+                        </Button>
+                      </form>
+                    </div>
+
                     {/* Add New Admin Form */}
                     <div className="bg-muted/30 rounded-lg p-4 border border-border">
                       <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">

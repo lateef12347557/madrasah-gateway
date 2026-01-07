@@ -197,3 +197,12 @@ export const deleteAdmin = async (id: string): Promise<void> => {
 
   if (error) throw error;
 };
+
+export const updateAdminPassword = async (id: string, newPassword: string): Promise<void> => {
+  const { error } = await supabase
+    .from('admin_users')
+    .update({ password_hash: newPassword })
+    .eq('id', id);
+
+  if (error) throw error;
+};
