@@ -131,8 +131,69 @@ export const getStudents = async (): Promise<StudentData[]> => {
   }));
 };
 
-export const ADMIN_PASSWORD = 'admin23435';
+export interface AdminUser {
+  id: string;
+  username: string;
+  createdAt: Date;
+}
 
-export const verifyAdminPassword = (password: string): boolean => {
-  return password === ADMIN_PASSWORD;
+export const verifyAdminPassword = async (password: string): Promise<{ success: boolean; admin?: AdminUser }> => {
+  const { data, error } = await supabase
+    .from('admin_users')
+    .select('*')
+    .eq('password_hash', password)
+    .maybeSingle();
+
+  if (error || !data) {
+    return { success: false };
+  }
+
+  return {
+    success: true,
+    admin: {
+      id: data.id,
+      username: data.username,
+      createdAt: new Date(data.created_at),
+    },
+  };
+};
+
+export const getAdmins = async (): Promise<AdminUser[]> => {
+  const { data, error } = await supabase
+    .from('admin_users')
+    .select('id, username, created_at')
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+
+  return data.map((row) => ({
+    id: row.id,
+    username: row.username,
+    createdAt: new Date(row.created_at),
+  }));
+};
+
+export const addAdmin = async (username: string, password: string): Promise<AdminUser> => {
+  const { data, error } = await supabase
+    .from('admin_users')
+    .insert({ username, password_hash: password })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    username: data.username,
+    createdAt: new Date(data.created_at),
+  };
+};
+
+export const deleteAdmin = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('admin_users')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
 };
